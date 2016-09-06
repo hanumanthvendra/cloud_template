@@ -1,0 +1,323 @@
+{
+	  "AWSTemplateFormatVersion" : "2010-09-09",
+	
+	  "Description" : "Jenkins",
+	
+	  "Parameters" : {
+	
+	    "KeyName" : {
+	      "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instances",
+	      "Type" : "String",
+	      "Default" : "development",
+	      "MinLength": "1",
+	      "MaxLength": "64",
+	      "AllowedPattern" : "[-_ a-zA-Z0-9]*",
+	      "ConstraintDescription" : "can contain only alphanumeric characters, spaces, dashes and underscores."
+	    },
+	
+	    "InstanceType" : {
+	      "Description" : "Jenkins EC2 instance type",
+	      "Type" : "String",
+	      "Default" : "t1.micro",
+	      "ConstraintDescription" : "must be a valid EC2 instance type."
+	    },
+	
+	    "ServerName" : {
+	      "Description" : "Machine name for server",
+	      "Type" : "String"
+	    },
+	    "GitUsername" : {
+	      "Description" : "Git username",
+	      "NoEcho": "true",
+	      "Type" : "String"
+	    },
+	    "GitPassword" : {
+	      "Description" : "Git password",
+	      "NoEcho": "true",
+	      "Type" : "String"
+	    },
+	
+	    "ChefOrganization" : {
+	      "Description" : "Your Chef Organization",
+	      "Type" : "String",
+	      "Default" : "hanumanth"
+	    },
+	
+	    "S3Bucket" : {
+	      "Description" : "S3 Bucket to pull your hosted chef validator key from",
+	      "Type" : "String",
+	      "Default" : "hanumanth"
+	    }
+	  },
+	
+	  "Mappings" : {
+    "AWSInstanceType2Arch" : {
+      "t1.micro"    : { "Arch" : "PV64"   },
+      "t2.micro"    : { "Arch" : "HVM64"  },
+      "t2.small"    : { "Arch" : "HVM64"  },
+      "t2.medium"   : { "Arch" : "HVM64"  },
+      "m1.small"    : { "Arch" : "PV64"   },
+      "m1.medium"   : { "Arch" : "PV64"   },
+      "m1.large"    : { "Arch" : "PV64"   },
+      "m1.xlarge"   : { "Arch" : "PV64"   },
+      "m2.xlarge"   : { "Arch" : "PV64"   },
+      "m2.2xlarge"  : { "Arch" : "PV64"   },
+      "m2.4xlarge"  : { "Arch" : "PV64"   },
+      "m3.medium"   : { "Arch" : "HVM64"  },
+      "m3.large"    : { "Arch" : "HVM64"  },
+      "m3.xlarge"   : { "Arch" : "HVM64"  },
+      "m3.2xlarge"  : { "Arch" : "HVM64"  },
+      "c1.medium"   : { "Arch" : "PV64"   },
+      "c1.xlarge"   : { "Arch" : "PV64"   },
+      "c3.large"    : { "Arch" : "HVM64"  },
+      "c3.xlarge"   : { "Arch" : "HVM64"  },
+      "c3.2xlarge"  : { "Arch" : "HVM64"  },
+      "c3.4xlarge"  : { "Arch" : "HVM64"  },
+      "c3.8xlarge"  : { "Arch" : "HVM64"  },
+      "g2.2xlarge"  : { "Arch" : "HVMG2"  },
+      "r3.large"    : { "Arch" : "HVM64"  },
+      "r3.xlarge"   : { "Arch" : "HVM64"  },
+      "r3.2xlarge"  : { "Arch" : "HVM64"  },
+      "r3.4xlarge"  : { "Arch" : "HVM64"  },
+      "r3.8xlarge"  : { "Arch" : "HVM64"  },
+      "i2.xlarge"   : { "Arch" : "HVM64"  },
+      "i2.2xlarge"  : { "Arch" : "HVM64"  },
+      "i2.4xlarge"  : { "Arch" : "HVM64"  },
+      "i2.8xlarge"  : { "Arch" : "HVM64"  },
+      "hi1.4xlarge" : { "Arch" : "HVM64"  },
+      "hs1.8xlarge" : { "Arch" : "HVM64"  },
+      "cr1.8xlarge" : { "Arch" : "HVM64"  },
+      "cc2.8xlarge" : { "Arch" : "HVM64"  }
+    },
+
+    "AWSRegionArch2AMI" : {
+      "us-east-1"      : { "PV64" : "ami-50842d38", "HVM64" : "ami-08842d60", "HVMG2" : "ami-3a329952"  },
+      "us-west-2"      : { "PV64" : "ami-af86c69f", "HVM64" : "ami-8786c6b7", "HVMG2" : "ami-47296a77"  },
+      "us-west-1"      : { "PV64" : "ami-c7a8a182", "HVM64" : "ami-cfa8a18a", "HVMG2" : "ami-331b1376"  },
+      "eu-west-1"      : { "PV64" : "ami-aa8f28dd", "HVM64" : "ami-748e2903", "HVMG2" : "ami-00913777"  },
+      "ap-southeast-1" : { "PV64" : "ami-20e1c572", "HVM64" : "ami-d6e1c584", "HVMG2" : "ami-fabe9aa8"  },
+      "ap-northeast-1" : { "PV64" : "ami-21072820", "HVM64" : "ami-35072834", "HVMG2" : "ami-5dd1ff5c"  },
+      "ap-southeast-2" : { "PV64" : "ami-8b4724b1", "HVM64" : "ami-fd4724c7", "HVMG2" : "ami-e98ae9d3"  },
+      "sa-east-1"      : { "PV64" : "ami-9d6cc680", "HVM64" : "ami-956cc688", "HVMG2" : "NOT_SUPPORTED" },
+      "cn-north-1"     : { "PV64" : "ami-a857c591", "HVM64" : "ami-ac57c595", "HVMG2" : "NOT_SUPPORTED" },
+      "eu-central-1"   : { "PV64" : "ami-a03503bd", "HVM64" : "ami-b43503a9", "HVMG2" : "ami-b03503ad"  }
+    }
+	  },
+	
+	  "Resources" : {
+	
+	    "RootRole" : {
+	      "Type" : "AWS::IAM::Role",
+	      "Properties" : {
+	        "AssumeRolePolicyDocument" : {
+	          "Statement" : [{
+	            "Effect" : "Allow",
+	            "Principal" : {
+	              "Service" : [ "ec2.amazonaws.com"]
+	            },
+	            "Action" : ["sts:AssumeRole"]
+	          }]
+	        },
+	        "Path" : "/",
+	        "Policies" : [{
+	          "PolicyName" : "root",
+	          "PolicyDocument" : {
+	            "Statement" : [{
+	              "Effect" : "Allow",
+	              "Action" : "*",
+	              "Resource" : "*"
+	            }]
+	          }
+	        }]
+	      }
+	    },
+	    "RootInstanceProfile" : {
+	      "Type" : "AWS::IAM::InstanceProfile",
+	      "Properties" : {
+	        "Path" : "/",
+	        "Roles" : [{
+	          "Ref" : "RootRole"
+	        }]
+	      }
+	    },
+	
+	    "User" : {
+	      "Type" : "AWS::IAM::User",
+	      "Properties" : {
+	        "Path": "/",
+	        "Policies": [{
+	          "PolicyName": "root",
+	          "PolicyDocument": { "Statement":[{
+	            "Effect":"Allow",
+	            "Action":"*",
+	            "Resource":"*"
+	          }]}
+	        }]
+	      }
+	    },
+	
+	    "HostKeys" : {
+	      "Type" : "AWS::IAM::AccessKey",
+	      "Properties" : {
+	        "UserName" : { "Ref": "User" }
+	      }
+	    },
+	
+	    "WebServerGroup" : {
+	      "Type" : "AWS::AutoScaling::AutoScalingGroup",
+	      "Properties" : {
+	        "AvailabilityZones" : { "Fn::GetAZs" : "" },
+	        "LaunchConfigurationName" : { "Ref" : "LaunchConfig" },
+	        "MinSize" : "1",
+	        "MaxSize" : "1",
+	        "DesiredCapacity" : "1"
+	      }
+	    },
+	
+	
+	    "LaunchConfig": {
+	      "Type" : "AWS::AutoScaling::LaunchConfiguration",
+	      "Metadata" : {
+	        "AWS::CloudFormation::Init" : {
+	          "config" : {
+	            "users" : {
+	              "tomcat" : {
+	              }
+	            },
+	            "packages" : {
+	              "yum" : {
+	                "gcc-c++"       : [],
+	                "autoconf"      : [],
+	                "automake"      : [],
+	                "libxml2-devel" : [],
+	                "libxslt-devel" : []
+	              }
+	            },
+	            "files" : {
+	              "/etc/chef/validator.pem" : {
+	                "source" : "https://s3-us-west-2.amazonaws.com/hanumanth/hanumanth.pem",
+	                "authentication" : "S3AccessCreds"
+	              },
+	              "/etc/chef/client.rb" : {
+	                "content" : { "Fn::Join" : ["", [
+	                  "log_level        :info\n",
+	                  "log_location     STDOUT\n",
+	                  "chef_server_url  \"https://api.opscode.com/organizations/hanumanth\"\n",
+	                  "validation_key         \"/etc/chef/hanumanth.pem\"\n",
+	                  "validation_client_name \"hanumanth-validator\""
+	                ]] },
+	                "mode" : "000644",
+	                "owner" : "root",
+	                "group" : "wheel"
+	              },
+	              "/etc/chef/node.json" : {
+	                "content" : {
+	                  "aws" : {
+	                    "s3" : {
+	                      "bucket" : { "Ref" : "S3Bucket" }
+	                    }
+	                  },
+	
+	                  "jenkins" : {
+	                    "server" : {
+	                      "name" : { "Ref" : "ServerName" }
+	                    }
+	                  },
+	                  "git" : {
+	                    "username" : { "Ref" : "GitUsername" },
+	                    "password" : { "Ref" : "GitPassword" },
+	                    "org" : "@hanumanth",
+	                    "platform" : {
+	                      "repo" : "opendelivery_platform"
+	                    },
+	                    "jenkins" : {
+	                      "repo" : "opendelivery_jenkins"
+	                    }
+	                  },
+	                  "run_list": [
+	                    "recipe[jenkins::java]",
+						"recipe[jenkins::master]"
+	                  ]
+	                },
+	                "mode" : "000644",
+	                "owner" : "root",
+	                "group" : "wheel"
+	              }
+	            }
+	          }
+	        },
+	        "AWS::CloudFormation::Authentication" : {
+	          "S3AccessCreds" : {
+	            "type" : "S3",
+	            "accessKeyId" : { "Ref" : "Hostkeys" },
+	            "secretKey" : {"Fn::GetAtt": ["HostKeys", "SecretAccessKey"]},
+	            "buckets" : [ { "Ref" : "S3Bucket" } ]
+	          }
+	        }
+	      },
+	      "Properties": {
+	        "IamInstanceProfile" : { "Ref": "RootInstanceProfile" },
+	        "ImageId" : { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" },
+	                                          { "Fn::FindInMap" : [ "AWSInstanceType2Arch", { "Ref" : "InstanceType" }, "Arch" ] } ] },
+	        "InstanceType"   : { "Ref" : "InstanceType" },
+	        "SecurityGroups" : [ {"Ref" : "FrontendGroup"} ],
+	        "KeyName"        : { "Ref" : "KeyName" },
+	        "UserData"       : { "Fn::Base64" : { "Fn::Join" : ["", [
+	          "#!/bin/bash\n",
+	          "yum update -y aws-cfn-bootstrap\n",
+	
+	          "# Remove Ruby 1.8.7\n",
+	          "yum erase -y ruby rubygems\n",
+	
+	          "# Install Ruby 1.9.3\n",
+	          "yum -y install ruby19-devel\n",
+	
+	          "# Move Ruby 1.9.3 to Default Ruby\n",
+	          "ln -s /usr/bin/ruby1.9 /usr/bin/ruby\n",
+	          "ln -s /usr/bin/gem1.9 /usr/bin/gem\n",
+	
+	          "# Install Chef\n",
+	          "wget https://opscode-omnibus-packages.s3.amazonaws.com/el/6/x86_64/chef-12.0.3-1.x86_64.rpm\n",
+	          "rpm -Uvh chef-12.0.3-1.x86_64.rpm\n",
+	
+	          "/opt/aws/bin/cfn-init -v -s ", { "Ref" : "AWS::StackId" }, " -r LaunchConfig ",
+	          "    --access-key ", { "Ref" : "HostKeys" },
+	          "    --secret-key ", { "Fn::GetAtt" : [ "HostKeys", "SecretAccessKey" ]},
+	          "    --region ", { "Ref" : "AWS::Region" }, "\n",
+	
+	          "chef-client -j /etc/chef/node.json\n",
+	
+	          "/opt/aws/bin/cfn-signal", " -e 0", " '", { "Ref" : "WaitHandle" }, "'\n"
+	        ]]}}
+	      }
+	    },
+	
+	
+	    "FrontendGroup" : {
+	      "Type" : "AWS::EC2::SecurityGroup",
+	      "Properties" : {
+	        "GroupDescription" : "Enable SSH and access to Apache and Tomcat",
+	        "SecurityGroupIngress" : [
+	          {"IpProtocol" : "tcp", "FromPort" : "8080", "ToPort" : "8080", "CidrIp" : "0.0.0.0/0"},
+	          {"IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp" : "0.0.0.0/0"}
+	        ]
+	      }
+	    },
+	
+	    "WaitHandle" : {
+	      "Type" : "AWS::CloudFormation::WaitConditionHandle"
+	    },
+	
+	    "WaitCondition" : {
+	      "Type" : "AWS::CloudFormation::WaitCondition",
+	      "DependsOn" : "WebServerGroup",
+	      "Properties" : {
+	        "Handle" : { "Ref" : "WaitHandle" },
+	        "Timeout" : "990"
+	      }
+	    }
+	  },
+	
+	  "Outputs" : {
+	  }
+	}
